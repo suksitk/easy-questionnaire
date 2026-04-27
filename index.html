@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<script type="application/json" id="cowork-artifact-meta">
+{
+  "name": "Secstrike Scoping Wizard",
+  "schemaVersion": 1,
+  "description": "SecStrike Dynamic Scoping Wizard — multi-step form for customers to select pentest services and answer relevant questions only."
+}
+</script>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SecStrike — Scoping Wizard</title>
+<style>
+:root {
+  color-scheme: light;
+  --primary: #e8272b;
+  --primary-dark: #b81e22;
+  --dark: #0f1117;
+  --text: #1a1d27;
+  --text-light: #5a6178;
+  --text-muted: #8b92aa;
+  --surface: #ffffff;
+  --surface2: #f7f8fc;
+  --surface3: #eef0f7;
+  --success: #16a34a;
+  --error: #dc2626;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--surface2); color: var(--text); min-height: 100vh; }
+.wizard-shell { max-width: 780px; margin: 0 auto; padding: 0 16px 60px; }
+
+.header { background: var(--dark); margin: 0 -16px; padding: 18px 32px; display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+.logo-icon { width: 36px; height: 36px; background: var(--primary); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-weight: 900; color: #fff; font-size: 18px; }
+.logo-text { color: #fff; font-size: 20px; font-weight: 700; }
+.logo-text span { color: var(--primary); }
+.header-sub { color: #8b92aa; font-size: 13px; margin-left: auto; }
+
+.steps-row { display: flex; align-items: center; margin-bottom: 28px; }
+.step-item { display: flex; flex-direction: column; align-items: center; flex: 1; position: relative; }
+.step-item:not(:last-child)::after { content:''; position:absolute; top:15px; left:50%; width:100%; height:2px; background:var(--surface3); z-index:0; }
+.step-item.done:not(:last-child)::after { background: var(--primary); }
+.step-dot { width:30px; height:30px; border-radius:50%; background:var(--surface3); color:var(--text-muted); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; z-index:1; position:relative; border:2px solid var(--surface3); transition:all .25s; }
+.step-item.active .step-dot { background:var(--primary); color:#fff; border-color:var(--primary); }
+.step-item.done .step-dot { background:var(--primary); color:#fff; border-color:var(--primary); }
+.step-label { font-size:11px; color:var(--text-muted); margin-top:5px; text-align:center; }
+.step-item.active .step-label { color:var(--primary); font-weight:600; }
+.step-item.done .step-label { color:var(--text-light); }
+
+.card { background:var(--surface); border-radius:16px; border:1px solid var(--surface3); padding:32px; box-shadow:0 2px 12px rgba(0,0,0,.06); }
+.card-title { font-size:22px; font-weight:700; margin-bottom:4px; }
+.card-sub { font-size:14px; color:var(--text-light); margin-bottom:28px; line-height:1.5; }
+
+.field { margin-bottom:20px; }
+.field label { display:block; font-size:13px; font-weight:600; margin-bottom:7px; }
+.field label .req { color:var(--primary); margin-left:3px; }
+.field input[type=text], .field textarea {
+  width:100%; padding:10px 14px; border:1.5px solid var(--surface3); border-radius:9px;
+  font-size:14px; color:var(--text); background:var(--surface); outline:none; font-family:inherit; transition:border .2s;
+}
+.field input[type=text]:focus, .field textarea:focus { border-color:var(--primary); }
+.field textarea { min-height:80px; resize:vertical; }
+
+/* Email with validation */
+.input-wrap { position:relative; }
+.input-wrap input { width:100%; padding:10px 40px 10px 14px; border:1.5px solid var(--surface3); border-radius:9px; font-size:14px; color:var(--text); background:var(--surface); outline:none; font-family:inherit; transition:border .2s; }
+.input-wrap input:focus { border-color:var(--primary); }
+.input-wrap input.valid { border-color:var(--success); }
+.input-wrap input.invalid { border-color:var(--error); background:#fff8f8; }
+.input-status { position:absolute; right:12px; top:50%; transform:translateY(-50%); font-size:16px; pointer-events:none; display:none; }
+.input-wrap input.valid ~ .input-status.ok { display:block; }
+.input-wrap input.invalid ~ .input-status.err { display:block; }
+.field-msg { font-size:12px; margin-top:6px; display:flex; align-items:flex-start; gap:6px; line-height:1.4; }
+.field-msg.error { color:var(--error); }
+.field-msg.hint { color:var(--text-muted); }
+.field-msg.success { color:var(--success); }
+
+/* Chips */
+.chip-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.chip-grid.single-col { grid-template-columns:1fr; }
+.chip { display:flex; align-items:flex-start; gap:10px; padding:11px 14px; border-radius:10px; border:1.5px solid var(--surface3); cursor:pointer; transition:all .18s; background:var(--surface); }
+.chip:hover { border-color:#c8cce0; background:var(--surface2); }
+.chip.selected { border-color:var(--primary); background:#fff5f5; }
+.chip-check { width:18px; height:18px; min-width:18px; border-radius:5px; border:2px solid #c8cce0; display:flex; align-items:center; justify-content:center; margin-top:1px; transition:all .15s; }
+.chip.selected .chip-check { background:var(--primary); border-color:var(--primary); }
+.chip-radio .chip-check { border-radius:50%; }
+.chip-radio.selected .chip-check { background:var(--primary); border-color:var(--primary); }
+.chip-text { font-size:13px; line-height:1.4; }
+
+/* Service grid */
+.service-grid { display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; }
+.svc-card { border:1.5px solid var(--surface3); border-radius:12px; padding:14px 12px; cursor:pointer; transition:all .18s; display:flex; flex-direction:column; gap:8px; background:var(--surface); }
+.svc-card:hover { border-color:#c8cce0; background:var(--surface2); }
+.svc-card.selected { border-color:var(--primary); background:#fff5f5; }
+.svc-icon { font-size:24px; }
+.svc-label { font-size:13px; font-weight:600; line-height:1.3; }
+.svc-label-en { font-size:11px; color:var(--text-muted); }
+.svc-check { width:18px; height:18px; border-radius:4px; border:2px solid #c8cce0; margin-left:auto; display:flex; align-items:center; justify-content:center; align-self:flex-start; min-width:18px; }
+.svc-card.selected .svc-check { background:var(--primary); border-color:var(--primary); }
+.svc-top { display:flex; width:100%; justify-content:space-between; align-items:flex-start; }
+
+/* Dynamic item cards (web/api/mobile) */
+.item-cards { display:flex; flex-direction:column; gap:12px; margin-top:4px; }
+.item-card { border:1.5px solid var(--surface3); border-radius:12px; padding:16px; background:var(--surface); transition:border .2s; }
+.item-card:focus-within { border-color:var(--primary); }
+.item-card-header { display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+.item-num { width:26px; height:26px; border-radius:50%; background:var(--primary); color:#fff; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+.item-name-input { flex:1; padding:7px 12px; border:1.5px solid var(--surface3); border-radius:8px; font-size:13px; font-family:inherit; color:var(--text); outline:none; }
+.item-name-input:focus { border-color:var(--primary); }
+.item-remove { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:18px; padding:0 4px; line-height:1; }
+.item-remove:hover { color:var(--primary); }
+.item-sub-label { font-size:12px; font-weight:600; color:var(--text-light); margin-bottom:8px; }
+
+/* Size/option chips inside cards */
+.mini-chips { display:grid; grid-template-columns:1fr 1fr; gap:7px; margin-bottom:12px; }
+.mini-chip { display:flex; align-items:flex-start; gap:8px; padding:9px 12px; border-radius:8px; border:1.5px solid var(--surface3); cursor:pointer; transition:all .15s; background:var(--surface); }
+.mini-chip:hover { border-color:#c8cce0; background:var(--surface2); }
+.mini-chip.selected { border-color:var(--primary); background:#fff5f5; }
+.mini-dot { width:14px; height:14px; min-width:14px; border-radius:50%; border:2px solid #c8cce0; margin-top:2px; display:flex; align-items:center; justify-content:center; transition:all .15s; }
+.mini-chip.selected .mini-dot { background:var(--primary); border-color:var(--primary); }
+.mini-label strong { display:block; font-size:12px; font-weight:600; }
+.mini-label span { font-size:11px; color:var(--text-muted); }
+
+/* Platform checkboxes inside mobile card */
+.platform-row { display:flex; gap:8px; margin-bottom:0; }
+.plat-chip { display:flex; align-items:center; gap:7px; padding:7px 12px; border-radius:8px; border:1.5px solid var(--surface3); cursor:pointer; font-size:12px; font-weight:600; transition:all .15s; background:var(--surface); }
+.plat-chip:hover { border-color:#c8cce0; }
+.plat-chip.selected { border-color:var(--primary); background:#fff5f5; color:var(--primary); }
+.plat-check { width:14px; height:14px; border-radius:3px; border:2px solid #c8cce0; display:flex; align-items:center; justify-content:center; }
+.plat-chip.selected .plat-check { background:var(--primary); border-color:var(--primary); }
+
+.add-item-btn { display:flex; align-items:center; gap:7px; margin-top:10px; padding:9px 16px; border:1.5px dashed #c8cce0; border-radius:10px; background:none; cursor:pointer; font-size:13px; color:var(--text-muted); font-family:inherit; transition:all .15s; width:100%; justify-content:center; }
+.add-item-btn:hover { border-color:var(--primary); color:var(--primary); background:#fff5f5; }
+
+/* Buttons */
+.btn-row { display:flex; gap:12px; margin-top:28px; justify-content:flex-end; }
+.btn { padding:11px 24px; border-radius:9px; font-size:14px; font-weight:600; cursor:pointer; border:none; transition:all .18s; font-family:inherit; }
+.btn-primary { background:var(--primary); color:#fff; }
+.btn-primary:hover { background:var(--primary-dark); }
+.btn-outline { background:transparent; color:var(--text-light); border:1.5px solid var(--surface3); }
+.btn-outline:hover { border-color:#c8cce0; color:var(--text); }
+.btn-pdf { background:#1a1d27; color:#fff; display:flex; align-items:center; gap:8px; }
+.btn-pdf:hover { background:#252836; }
+
+/* Summary */
+.summary-section { margin-bottom:24px; }
+.summary-section h3 { font-size:14px; font-weight:700; margin-bottom:12px; padding-bottom:6px; border-bottom:1.5px solid var(--surface3); }
+.summary-row { display:flex; gap:12px; padding:7px 0; border-bottom:1px solid var(--surface2); }
+.summary-q { font-size:13px; color:var(--text-muted); flex:0 0 40%; }
+.summary-a { font-size:13px; font-weight:500; flex:1; }
+.mini-table { width:100%; border-collapse:collapse; margin-top:4px; }
+.mini-table th { font-size:11px; font-weight:600; color:var(--text-muted); text-align:left; padding:5px 10px; background:var(--surface2); }
+.mini-table td { font-size:12px; padding:7px 10px; border-bottom:1px solid var(--surface2); }
+
+.alert { padding:14px 16px; border-radius:10px; font-size:13px; line-height:1.5; margin-bottom:20px; }
+.alert-warn { background:#fffbeb; border:1px solid #fde68a; color:#92400e; }
+.pdf-hint { background:var(--surface2); border:1.5px solid var(--surface3); border-radius:10px; padding:14px 16px; margin-top:12px; font-size:12px; color:var(--text-muted); line-height:1.6; display:none; }
+
+@media (max-width:600px) {
+  .card { padding:20px; }
+  .service-grid { grid-template-columns:1fr 1fr; }
+  .chip-grid { grid-template-columns:1fr; }
+  .mini-chips { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+<div class="wizard-shell">
+  <div class="header">
+    <div class="logo-icon">S</div>
+    <div class="logo-text">Sec<span>Strike</span></div>
+    <div class="header-sub">Scoping Questionnaire</div>
+  </div>
+  <div class="steps-row" id="stepsRow"></div>
+  <div class="card" id="mainCard"></div>
+</div>
+<script>
+// ── Blocklist ────────────────────────────────────
+const FREE_DOMAINS = new Set(['gmail.com','googlemail.com','yahoo.com','yahoo.co.th','ymail.com','rocketmail.com','hotmail.com','hotmail.co.th','hotmail.co.uk','outlook.com','outlook.co.th','live.com','msn.com','windowslive.com','icloud.com','me.com','mac.com','protonmail.com','proton.me','pm.me','aol.com','mail.com','zoho.com','zohomail.com','tutanota.com','tuta.io','gmx.com','gmx.net','thaimail.com','thaimail.net','inbox.com','fastmail.com','yandex.com','yandex.ru','rediffmail.com']);
+function validateEmail(email) {
+  email = email.trim().toLowerCase();
+  if (!email) return { ok:false, msg:'กรุณากรอก email' };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { ok:false, msg:'รูปแบบ email ไม่ถูกต้อง' };
+  const domain = email.split('@')[1];
+  if (FREE_DOMAINS.has(domain)) return { ok:false, msg:`ไม่รับ ${domain} — กรุณาใช้ email องค์กร เช่น name@company.com` };
+  for (const b of ['gmail','yahoo','hotmail','outlook','live','icloud']) {
+    if (domain.includes(b+'.')) return { ok:false, msg:`ไม่รับ ${domain} — กรุณาใช้ email องค์กร` };
+  }
+  return { ok:true, msg:`✓ ${domain}` };
+}
+
+// ── Constants ────────────────────────────────────
+const STEPS = [
+  {label:'ข้อมูลติดต่อ'},{label:'เลือก Service'},{label:'Shared Scope'},{label:'คำถามเฉพาะ'},{label:'สรุป'}
+];
+const SERVICES = [
+  {id:'web_app_pt',   icon:'🌐',label:'Web App Pentest',         en:'Web Application'},
+  {id:'mobile_app_pt',icon:'📱',label:'Mobile App Pentest',      en:'Mobile Application'},
+  {id:'api_pt',       icon:'🔌',label:'API Pentest',             en:'API Penetration Test'},
+  {id:'network_pt',   icon:'🖧', label:'Network / Infra Pentest', en:'Network / Infrastructure'},
+  {id:'wifi_pt',      icon:'📶',label:'Wi-Fi Pentest',           en:'Wi-Fi Security'},
+  {id:'ai_pt',        icon:'🤖',label:'AI Pentest',              en:'AI / LLM Security'},
+  {id:'va_scan',      icon:'🔍',label:'Vulnerability Assessment',en:'VA Scan'},
+  {id:'red_team',     icon:'🎯',label:'Red Teaming',             en:'Red Team Exercise'},
+  {id:'phishing',     icon:'🪝',label:'Phishing Simulation',     en:'Security Awareness'},
+];
+
+const WEB_SIZES   = [{val:'Small',desc:'ไม่เกิน 10 หน้า/หน้าจอ'},{val:'Medium',desc:'หลาย module, workflow ไม่ซับซ้อน'},{val:'Large',desc:'หลาย module, หลาย role, workflow ชัดเจน'},{val:'Enterprise',desc:'หลายระบบย่อย, integration, approval flow'},{val:'ยังไม่แน่ใจ',desc:'ให้ SecStrike ช่วยประเมิน'}];
+const MOBILE_SIZES= [{val:'Small',desc:'ไม่เกิน 10 screens'},{val:'Medium',desc:'10–30 screens'},{val:'Large',desc:'มากกว่า 30 screens / หลาย module'},{val:'Enterprise',desc:'หลาย role, workflow, transaction สำคัญ'},{val:'ยังไม่แน่ใจ',desc:'ให้ SecStrike ช่วยประเมิน'}];
+const API_SIZES   = [{val:'S (1–10)',desc:'1–10 endpoints'},{val:'M (11–30)',desc:'11–30 endpoints'},{val:'L (31–60)',desc:'31–60 endpoints'},{val:'XL (61–100)',desc:'61–100 endpoints'},{val:'XXL (100+)',desc:'มากกว่า 100 endpoints'},{val:'ยังไม่แน่ใจ',desc:'ให้ SecStrike ช่วยประเมิน'}];
+const COUNT_OPTS  = ['1','2–3','4–5','มากกว่า 5','ยังไม่แน่ใจ ให้ SecStrike ช่วยประเมิน'];
+const MOBILE_COUNT_OPTS = ['1 app','2–3 apps','4–5 apps','มากกว่า 5 apps','ยังไม่แน่ใจ ให้ SecStrike ช่วยประเมิน'];
+const API_COUNT_OPTS    = ['1 API','2–3 APIs','4–5 APIs','มากกว่า 5 APIs','ยังไม่แน่ใจ ให้ SecStrike ช่วยประเมิน'];
+
+const SERVICE_QUESTIONS = {
+  web_app_pt: {
+    title:'Web Application Penetration Test', icon:'🌐',
+    fields:[
+      {id:'web_001',label:'ต้องการทดสอบกี่ web application?',type:'radio',req:true,opts:COUNT_OPTS},
+      {id:'web_apps',label:'ระบุขนาดของแต่ละ web application',type:'per_web',req:true},
+      {id:'web_003',label:'ประเภทของระบบเว็บ (เลือกได้หลายข้อ)',type:'check',req:true,opts:['E-commerce / marketplace','Banking / FinTech / payment','Healthcare / ข้อมูลสุขภาพ','Internal tool / back-office','Government / public portal','SaaS product','อื่น ๆ']},
+      {id:'web_004',label:'มีระบบ login ไหม?',type:'radio',req:true,opts:['มี — login เดี่ยว','มี — หลาย role / permission','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'web_005',label:'มี user role กี่ระดับ?',type:'radio',req:true,opts:['1 role','2 roles','3–5 roles','มากกว่า 5 roles','ยังไม่แน่ใจ']},
+      {id:'web_006',label:'มี workflow สำคัญ เช่น payment, booking? (เลือกได้หลายข้อ)',type:'check',req:false,opts:['Payment / checkout','Booking / reservation','Order / inventory','Approval workflow','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'web_007',label:'ระบบมีข้อมูลส่วนบุคคล / sensitive data?',type:'radio',req:false,opts:['มี — ข้อมูลการเงิน','มี — ข้อมูลสุขภาพ','มี — ข้อมูลส่วนบุคคลทั่วไป','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'web_008',label:'ต้องการทดสอบทั้งระบบหรือเฉพาะบาง feature?',type:'radio',req:true,opts:['ทั้งระบบ','เฉพาะบาง feature','ยังไม่แน่ใจ']},
+      {id:'web_009',label:'ระบบเข้าถึงได้อย่างไร?',type:'radio',req:true,opts:['Public internet','ผ่าน VPN','ผ่าน IP allowlist','Internal network เท่านั้น','ยังไม่แน่ใจ']},
+      {id:'web_010',label:'มี WAF / CDN / bot protection?',type:'radio',req:false,opts:['มี WAF','มี CDN (เช่น Cloudflare)','มีทั้งคู่','ไม่มี','ยังไม่แน่ใจ']},
+    ]
+  },
+  mobile_app_pt: {
+    title:'Mobile Application Penetration Test', icon:'📱',
+    fields:[
+      {id:'mobile_count',label:'ต้องการทดสอบกี่ mobile application?',type:'radio',req:true,opts:MOBILE_COUNT_OPTS},
+      {id:'mobile_apps', label:'ระบุรายละเอียดของแต่ละ mobile app',type:'per_mobile',req:true},
+      {id:'mobile_002',label:'ต้องการรวม backend API ใน scope ด้วยไหม?',type:'radio',req:true,opts:['ใช่ รวม backend API ด้วย','ไม่ ทดสอบเฉพาะ mobile app','ยังไม่แน่ใจ']},
+      {id:'mobile_004',label:'มีระบบ login ไหม?',type:'radio',req:true,opts:['มี — login เดี่ยว','มี — หลาย role','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'mobile_005',label:'มี user role กี่ระดับ?',type:'radio',req:true,opts:['1 role','2 roles','3–5 roles','มากกว่า 5 roles','ยังไม่แน่ใจ']},
+      {id:'mobile_006',label:'มี transaction / payment / wallet / booking? (เลือกได้หลายข้อ)',type:'check',req:false,opts:['Payment / e-wallet','Booking / reservation','Order tracking','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'mobile_007',label:'มีข้อมูลส่วนบุคคล / sensitive data?',type:'radio',req:false,opts:['มี — ข้อมูลการเงิน','มี — ข้อมูลสุขภาพ','มี — ข้อมูลส่วนบุคคลทั่วไป','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'mobile_008',label:'มี test build หรือสามารถติดตั้ง app สำหรับทดสอบได้ไหม?',type:'radio',req:true,opts:['มี test build พร้อม','ต้องจัดเตรียมก่อน','ใช้ production build','ยังไม่แน่ใจ']},
+    ]
+  },
+  api_pt: {
+    title:'API Penetration Test', icon:'🔌',
+    fields:[
+      {id:'api_count',label:'ต้องการทดสอบกี่ API / API group?',type:'radio',req:true,opts:API_COUNT_OPTS},
+      {id:'api_items', label:'ระบุรายละเอียดของแต่ละ API',type:'per_api',req:true},
+      {id:'api_003',label:'มี API documentation / Swagger / Postman collection?',type:'radio',req:true,opts:['มี — พร้อมให้แล้ว','มี — ต้องจัดเตรียมก่อน','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'api_004',label:'API ใช้ authentication แบบใด? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['API Key','JWT / Bearer token','OAuth 2.0','Basic Auth','ไม่มี authentication','ยังไม่แน่ใจ']},
+      {id:'api_005',label:'มี user role / permission หลายระดับ?',type:'radio',req:true,opts:['1 role','2 roles','3+ roles','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'api_006',label:'มี transaction / payment / sensitive operation? (เลือกได้หลายข้อ)',type:'check',req:false,opts:['Payment processing','Data transfer / export','Admin operations','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'api_007',label:'API เข้าถึงได้อย่างไร?',type:'radio',req:true,opts:['Public internet','ผ่าน VPN','ผ่าน IP allowlist','Internal network เท่านั้น','ยังไม่แน่ใจ']},
+      {id:'api_008',label:'มี rate limit / API gateway / anti-automation?',type:'radio',req:false,opts:['มี rate limit','มี API gateway','มีทั้งคู่','ไม่มี','ยังไม่แน่ใจ']},
+    ]
+  },
+  network_pt: {
+    title:'Network / Infrastructure Penetration Test', icon:'🖧',
+    fields:[
+      {id:'net_001',label:'ต้องการทดสอบ network แบบใด? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['External network','Internal network','Cloud infrastructure','Hybrid','ยังไม่แน่ใจ']},
+      {id:'net_002',label:'จำนวน IP / host ที่อยู่ใน scope โดยประมาณ',type:'radio',req:true,opts:['1–5 hosts/IPs','6–20 hosts/IPs','21–50 hosts/IPs','51–100 hosts/IPs','มากกว่า 100 hosts/IPs','ยังไม่แน่ใจ ให้ SecStrike ช่วยประเมิน']},
+      {id:'net_003',label:'เป็นระบบประเภทใด? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['Public internet servers','Internal network','Cloud workloads (AWS/GCP/Azure)','ยังไม่แน่ใจ']},
+      {id:'net_004',label:'มี credential ให้สำหรับ authenticated testing?',type:'radio',req:false,opts:['มี','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'net_005',label:'มีจำนวน location / site กี่แห่ง?',type:'radio',req:false,opts:['1 site','2–3 sites','4–10 sites','มากกว่า 10 sites','ยังไม่แน่ใจ']},
+      {id:'net_007',label:'มีระบบสำคัญที่ต้องการทดสอบ? (เลือกได้หลายข้อ)',type:'check',req:false,opts:['VPN / Firewall','Mail server','Active Directory / LDAP','Database server','Cloud workload','ไม่มี / ยังไม่แน่ใจ']},
+      {id:'net_008',label:'มี third-party hosting ที่ต้องขออนุญาตก่อน?',type:'radio',req:false,opts:['มี — ต้องขออนุญาตก่อน','ไม่มี','ยังไม่แน่ใจ']},
+    ]
+  },
+  wifi_pt: {
+    title:'Wi-Fi Penetration Test', icon:'📶',
+    fields:[
+      {id:'wifi_001',label:'ต้องการทดสอบกี่ location / office?',type:'radio',req:true,opts:['1 site','2–3 sites','4–10 sites','มากกว่า 10 sites','ยังไม่แน่ใจ']},
+      {id:'wifi_002',label:'จำนวน SSID โดยประมาณ',type:'radio',req:true,opts:['1–3 SSIDs','4–10 SSIDs','มากกว่า 10 SSIDs','ยังไม่แน่ใจ']},
+      {id:'wifi_003',label:'จำนวน Access Point โดยประมาณ',type:'radio',req:true,opts:['1–5 APs','6–20 APs','21–50 APs','มากกว่า 50 APs','ยังไม่แน่ใจ']},
+      {id:'wifi_004',label:'ประเภท Wi-Fi ที่ใช้งาน (เลือกได้หลายข้อ)',type:'check',req:true,opts:['Guest Wi-Fi','Corporate Wi-Fi','Captive Portal','WPA/WPA2/WPA3 Personal','Enterprise / 802.1X','ยังไม่แน่ใจ']},
+      {id:'wifi_005',label:'ต้องการทดสอบ rogue AP / evil twin? (เลือกได้หลายข้อ)',type:'check',req:false,opts:['Rogue AP detection','Evil Twin attack','Client-side attack','ไม่ต้องการ','ยังไม่แน่ใจ']},
+      {id:'wifi_006',label:'สามารถทดสอบ onsite ได้ไหม?',type:'radio',req:true,opts:['ได้ — มีวันเวลาที่สะดวก','ได้ — แต่ต้องนัดหมายล่วงหน้า','ไม่ได้ — ต้องการ remote testing','ยังไม่แน่ใจ']},
+    ]
+  },
+  ai_pt: {
+    title:'AI Penetration Test', icon:'🤖',
+    fields:[
+      {id:'ai_001',label:'ระบบ AI/LLM ใช้ทำอะไร?',type:'textarea',req:true},
+      {id:'ai_002',label:'ประเภทของระบบ AI? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['Chatbot / Customer service bot','Internal copilot / assistant','AI agent (execute actions)','API ที่มี AI feature','AI feature ใน application','อื่น ๆ']},
+      {id:'ai_003',label:'AI เชื่อมต่อกับข้อมูลหรือระบบภายในไหม?',type:'radio',req:true,opts:['ใช่ — เชื่อมต่อ internal database / document','ใช่ — เชื่อมต่อ API ภายใน','ไม่เชื่อมต่อ','ยังไม่แน่ใจ']},
+      {id:'ai_004',label:'AI สามารถ execute action ได้ไหม?',type:'radio',req:true,opts:['ใช่ — execute action ได้','ไม่ใช่ — ตอบคำถามอย่างเดียว','ยังไม่แน่ใจ']},
+      {id:'ai_005',label:'มีข้อมูล sensitive / personal / confidential ในระบบ?',type:'radio',req:true,opts:['มี — confidential documents','มี — personal data','มี — financial data','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'ai_006',label:'ต้องการทดสอบด้านใด? (เลือกได้หลายข้อ)',type:'check',req:false,opts:['Prompt injection','Data leakage','Model abuse / jailbreak','Insecure agentic action','Privacy violation','ยังไม่แน่ใจ ให้ SecStrike ช่วยแนะนำ']},
+      {id:'ai_007',label:'มี test account หรือ sandbox environment?',type:'radio',req:true,opts:['มี sandbox / test env','ต้องจัดเตรียม','ไม่มี — ทดสอบ production','ยังไม่แน่ใจ']},
+    ]
+  },
+  va_scan: {
+    title:'Vulnerability Assessment', icon:'🔍',
+    fields:[
+      {id:'va_001',label:'ต้องการสแกนอะไร? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['Web application','Network / hosts','Cloud infrastructure','Internal systems','ยังไม่แน่ใจ']},
+      {id:'va_002',label:'จำนวน IP / host / URL โดยประมาณ',type:'radio',req:true,opts:['1–10 targets','11–50 targets','51–100 targets','มากกว่า 100 targets','ยังไม่แน่ใจ ให้ SecStrike ช่วยประเมิน']},
+      {id:'va_003',label:'ต้องการ credentialed scan?',type:'radio',req:false,opts:['ใช่ — authenticated scan','ไม่ใช่ — unauthenticated scan','ทั้งคู่','ยังไม่แน่ใจ']},
+      {id:'va_004',label:'ต้องการ report แบบใด?',type:'radio',req:true,opts:['Technical report เท่านั้น','Technical + Executive Summary','ยังไม่แน่ใจ']},
+      {id:'va_005',label:'มี scan window ที่จำกัดไหม?',type:'radio',req:false,opts:['ไม่มี — ทดสอบได้ตลอด','มี — นอกเวลาทำการเท่านั้น','มี — ต้องการนัดหมายล่วงหน้า','ยังไม่แน่ใจ']},
+    ]
+  },
+  red_team: {
+    title:'Red Teaming', icon:'🎯',
+    fields:[
+      {id:'rt_001',label:'เป้าหมายของ Red Team คืออะไร?',type:'textarea',req:true},
+      {id:'rt_002',label:'ต้องการ scenario ประเภทใด? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['External attack surface','Phishing','Assumed breach / internal compromise','Cloud attack scenario','Physical intrusion','Wi-Fi','ICS/OT','ยังไม่แน่ใจ ให้ SecStrike ช่วยแนะนำ']},
+      {id:'rt_003',label:'ขนาดองค์กรโดยประมาณ',type:'radio',req:true,opts:['< 50 คน','50–200 คน','200–500 คน','500–2,000 คน','มากกว่า 2,000 คน']},
+      {id:'rt_004',label:'จำนวน office / location ที่เกี่ยวข้อง',type:'radio',req:false,opts:['1 แห่ง','2–3 แห่ง','4–10 แห่ง','มากกว่า 10 แห่ง','ยังไม่แน่ใจ']},
+      {id:'rt_005',label:'มี Blue Team / SOC ที่ต้องการทดสอบ response?',type:'radio',req:false,opts:['มี — ต้องการ test detection','มี — ไม่ต้องการ test detection','ไม่มี','ยังไม่แน่ใจ']},
+      {id:'rt_006',label:'ระยะเวลาที่คาดหวัง',type:'radio',req:true,opts:['1 สัปดาห์','2 สัปดาห์','3–4 สัปดาห์','1–3 เดือน','ยังไม่แน่ใจ ให้ SecStrike ช่วยแนะนำ']},
+      {id:'rt_007',label:'ข้อจำกัดสำคัญ เช่น ห้าม phishing, ห้าม exploit production',type:'textarea',req:false},
+    ]
+  },
+  phishing: {
+    title:'Phishing Simulation', icon:'🪝',
+    fields:[
+      {id:'phish_001',label:'จำนวนพนักงานที่จะอยู่ใน campaign',type:'radio',req:true,opts:['< 50 คน','50–200 คน','200–500 คน','500–2,000 คน','มากกว่า 2,000 คน']},
+      {id:'phish_002',label:'ต้องการ phishing channel ใด? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['Email phishing','SMS / Smishing','Voice / Vishing','ยังไม่แน่ใจ']},
+      {id:'phish_003',label:'ต้องการ landing page / credential capture simulation?',type:'radio',req:false,opts:['ใช่','ไม่ใช่','ยังไม่แน่ใจ']},
+      {id:'phish_004',label:'ต้องการทำกี่ campaign / wave?',type:'radio',req:true,opts:['1 campaign','2–3 campaigns','4+ campaigns','ยังไม่แน่ใจ']},
+      {id:'phish_005',label:'ต้องการ awareness report แยกตาม department?',type:'radio',req:false,opts:['ใช่','ไม่ใช่','ยังไม่แน่ใจ']},
+      {id:'phish_006',label:'มีข้อจำกัดด้าน HR / legal ที่ต้องพิจารณา?',type:'textarea',req:false},
+    ]
+  },
+};
+
+const SHARED_FIELDS = [
+  {id:'s006',label:'เป้าหมายหลักของการทดสอบคืออะไร? (เลือกได้หลายข้อ)',type:'check',req:true,opts:['ต้องการค้นหาช่องโหว่ก่อน go-live','ต้องการทดสอบระบบ production ที่ใช้งานอยู่','ต้องการใช้ประกอบ audit / compliance','ต้องการทดสอบหลังแก้ไขระบบ','ต้องการเปรียบเทียบความเสี่ยงก่อน/หลังปรับปรุงระบบ','ยังไม่แน่ใจ ให้ SecStrike ช่วยแนะนำ']},
+  {id:'s007',label:'มี compliance / audit / regulation ที่เกี่ยวข้องไหม?',type:'check',req:false,opts:['ไม่มี','ISO 27001','PCI DSS','PDPA / Privacy','BOT / SEC / OIC / regulator อื่น','Internal audit','อื่น ๆ','ยังไม่แน่ใจ']},
+  {id:'s008',label:'ต้องการเริ่มทดสอบช่วงไหน?',type:'radio',req:true,opts:['เร็วที่สุด','ภายใน 1 เดือน','ภายใน 1–3 เดือน','ภายใน 3–6 เดือน','ยังไม่มีกำหนด']},
+  {id:'s009',label:'ระบบพร้อมให้ทดสอบหรือยัง?',type:'radio',req:true,opts:['พร้อมแล้ว','ใกล้พร้อมแล้ว','ยังอยู่ระหว่างพัฒนา','ยังไม่แน่ใจ']},
+  {id:'s010',label:'ต้องการทดสอบบน environment ไหน?',type:'radio',req:true,opts:['Production','Staging / UAT','Development','Mixed environment','ยังไม่แน่ใจ']},
+  {id:'s011',label:'ต้องการทดสอบนอกเวลาทำการไหม?',type:'radio',req:false,opts:['ไม่จำเป็น — ทดสอบได้ตลอดเวลา','ต้องการทดสอบนอกเวลาเท่านั้น','ยืดหยุ่นได้','ยังไม่แน่ใจ']},
+  {id:'s013',label:'มีส่วนใดที่ไม่ต้องการให้ทดสอบ? (out-of-scope)',type:'textarea',req:false},
+  {id:'s015',label:'ต้องการให้ SecStrike ติดต่อกลับเพื่อช่วยประเมิน scope เพิ่มเติมไหม?',type:'radio',req:false,opts:['ใช่ — กรุณาติดต่อกลับ','ไม่จำเป็น — ดำเนินการต่อได้เลย']},
+];
+
+let state = {step:0,contact:{},services:[],shared:{},specific:{},moreServices:false,_svcIdx:0};
+
+function chk() { return `<svg width="10" height="8" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+function miniChk() { return `<svg width="8" height="6" viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 7L9 1" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`; }
+
+function renderProgress() {
+  document.getElementById('stepsRow').innerHTML = STEPS.map((s,i) => {
+    const cls = i<state.step?'done':i===state.step?'active':'';
+    return `<div class="step-item ${cls}"><div class="step-dot">${i<state.step?chk():i+1}</div><div class="step-label">${s.label}</div></div>`;
+  }).join('');
+}
+function renderStep() {
+  renderProgress();
+  const card = document.getElementById('mainCard');
+  if (state.step===0) renderContact(card);
+  else if (state.step===1) renderServiceSelect(card);
+  else if (state.step===2) renderShared(card);
+  else if (state.step===3) renderSpecific(card);
+  else renderSummary(card);
+}
+
+// ── Step 0 ───────────────────────────────────────
+function renderContact(card) {
+  card.innerHTML = `
+    <div class="card-title">👋 ยินดีต้อนรับ</div>
+    <div class="card-sub">กรอกข้อมูลเบื้องต้น เพื่อให้ทีม SecStrike ติดต่อกลับและจัดเตรียม proposal</div>
+    <div class="field"><label>ชื่อบริษัท / องค์กร <span class="req">*</span></label>
+      <input type="text" id="f_company" placeholder="เช่น ABC Corporation" value="${state.contact.company||''}"></div>
+    <div class="field"><label>ชื่อผู้ติดต่อหลัก <span class="req">*</span></label>
+      <input type="text" id="f_name" placeholder="ชื่อ-นามสกุล" value="${state.contact.name||''}"></div>
+    <div class="field">
+      <label>Email องค์กร <span class="req">*</span></label>
+      <div class="input-wrap">
+        <input type="text" id="f_email" placeholder="name@company.com" value="${state.contact.email||''}" oninput="onEmailInput(this)" onblur="onEmailBlur(this)">
+        <span class="input-status ok">✓</span><span class="input-status err">✕</span>
+      </div>
+      <div id="emailMsg" class="field-msg hint" style="display:none"></div>
+      <div class="field-msg hint">ต้องใช้ email ขององค์กร — ไม่รับ Gmail, Yahoo, Hotmail, Outlook และ email ฟรีอื่น ๆ</div>
+    </div>
+    <div class="field"><label>เบอร์โทร / LINE</label>
+      <input type="text" id="f_phone" placeholder="เบอร์โทรหรือ LINE ID" value="${state.contact.phone||''}"></div>
+    <div class="field"><label>ชื่อโปรเจกต์ หรือชื่อระบบที่ต้องการทดสอบ <span class="req">*</span></label>
+      <input type="text" id="f_project" placeholder="เช่น ระบบ Internet Banking" value="${state.contact.project||''}"></div>
+    <div class="btn-row"><button class="btn btn-primary" onclick="saveContact()">ถัดไป →</button></div>`;
+  if (state.contact.email) { const el=document.getElementById('f_email'); if(el) onEmailBlur(el); }
+}
+function onEmailInput(el) { el.classList.remove('valid','invalid'); const m=document.getElementById('emailMsg'); if(m) m.style.display='none'; }
+function onEmailBlur(el) {
+  const r=validateEmail(el.value);
+  el.classList.toggle('valid',r.ok); el.classList.toggle('invalid',!r.ok);
+  const m=document.getElementById('emailMsg');
+  if(m){m.style.display='flex';m.className=`field-msg ${r.ok?'success':'error'}`;m.textContent=r.msg;}
+}
+function saveContact() {
+  const company=document.getElementById('f_company').value.trim();
+  const name=document.getElementById('f_name').value.trim();
+  const emailRaw=document.getElementById('f_email').value.trim();
+  const phone=document.getElementById('f_phone').value.trim();
+  const project=document.getElementById('f_project').value.trim();
+  if(!company){alert('กรุณากรอกชื่อบริษัท');return;}
+  if(!name){alert('กรุณากรอกชื่อผู้ติดต่อ');return;}
+  const er=validateEmail(emailRaw);
+  if(!er.ok){
+    const el=document.getElementById('f_email');
+    el.classList.add('invalid');el.classList.remove('valid');
+    const m=document.getElementById('emailMsg');
+    if(m){m.style.display='flex';m.className='field-msg error';m.textContent=er.msg;}
+    el.focus();return;
+  }
+  if(!project){alert('กรุณากรอกชื่อโปรเจกต์');return;}
+  state.contact={company,name,email:emailRaw.toLowerCase().trim(),phone,project};
+  state.step=1;renderStep();
+}
+
+// ── Step 1 ───────────────────────────────────────
+function renderServiceSelect(card) {
+  card.innerHTML=`
+    <div class="card-title">🎯 เลือก Service ที่ต้องการ</div>
+    <div class="card-sub">อยากให้ SecStrike ช่วยทดสอบอะไรบ้าง? <strong>เลือกได้มากกว่า 1 รายการ</strong></div>
+    <div class="service-grid">${SERVICES.map(s=>`
+      <div class="svc-card ${state.services.includes(s.id)?'selected':''}" onclick="toggleService('${s.id}')">
+        <div class="svc-top"><div class="svc-icon">${s.icon}</div><div class="svc-check">${state.services.includes(s.id)?chk():''}</div></div>
+        <div class="svc-label">${s.label}</div><div class="svc-label-en">${s.en}</div>
+      </div>`).join('')}
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="goBack()">← กลับ</button>
+      <button class="btn btn-primary" onclick="saveServices()">ถัดไป →</button>
+    </div>`;
+}
+function toggleService(id) {
+  if(state.services.includes(id)) state.services=state.services.filter(s=>s!==id); else state.services.push(id);
+  const el=document.querySelector(`[onclick="toggleService('${id}')"]`);
+  el.classList.toggle('selected',state.services.includes(id));
+  el.querySelector('.svc-check').innerHTML=state.services.includes(id)?chk():'';
+}
+function saveServices() {
+  if(!state.services.length){alert('กรุณาเลือกอย่างน้อย 1 service');return;}
+  if(state.services.length>3){if(!confirm('Scope นี้ค่อนข้างกว้าง (มากกว่า 3 services)\nSecStrike แนะนำให้นัด call ก่อน\n\nต้องการดำเนินการต่อหรือไม่?'))return;state.moreServices=true;}
+  state.step=2;renderStep();
+}
+
+// ── Step 2 ───────────────────────────────────────
+function renderShared(card) {
+  card.innerHTML=`
+    <div class="card-title">📋 ข้อมูล Scope & Delivery</div>
+    <div class="card-sub">คำถามกลางที่ใช้กับทุก service — ถามครั้งเดียวเท่านั้น</div>
+    ${SHARED_FIELDS.map(f=>renderField(f,state.shared)).join('')}
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="goBack()">← กลับ</button>
+      <button class="btn btn-primary" onclick="saveShared()">ถัดไป →</button>
+    </div>`;
+}
+function saveShared() {
+  for(const f of SHARED_FIELDS){if(f.req){const v=state.shared[f.id];if(!v||(Array.isArray(v)&&!v.length)){alert(`กรุณาตอบ: "${f.label}"`);return;}}}
+  state.step=3;state._svcIdx=0;renderStep();
+}
+
+// ── Step 3 ───────────────────────────────────────
+function renderSpecific(card) {
+  const svc=state.services[state._svcIdx],q=SERVICE_QUESTIONS[svc];
+  const idx=state._svcIdx,total=state.services.length;
+  card.innerHTML=`
+    <div class="card-title">${q.icon} ${q.title}</div>
+    <div class="card-sub">Service ${idx+1} จาก ${total}</div>
+    ${state.moreServices?`<div class="alert alert-warn">⚠️ มีมากกว่า 3 services — SecStrike อาจแนะนำนัด call ก่อน</div>`:''}
+    ${q.fields.map(f=>renderField(f,state.specific)).join('')}
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="prevSpecific()">← กลับ</button>
+      <button class="btn btn-primary" onclick="nextSpecific()">${idx<total-1?'Service ถัดไป →':'ดูสรุป →'}</button>
+    </div>`;
+}
+function prevSpecific() { if(state._svcIdx>0){state._svcIdx--;renderStep();}else{state.step=2;renderStep();} }
+function nextSpecific() {
+  const svc=state.services[state._svcIdx],q=SERVICE_QUESTIONS[svc];
+  for(const f of q.fields){
+    if(!f.req) continue;
+    if(f.type==='text'||f.type==='textarea') continue;
+    if(f.type==='per_web'||f.type==='per_mobile'||f.type==='per_api'){
+      const countKey = f.type==='per_web'?'web_001':f.type==='per_mobile'?'mobile_count':'api_count';
+      const itemsKey = f.type==='per_web'?'web_apps':f.type==='per_mobile'?'mobile_apps':'api_items';
+      const cnt=state.specific[countKey];
+      if(!cnt){alert('กรุณาตอบจำนวนก่อน');return;}
+      const notSure = cnt.includes('ยังไม่แน่ใจ');
+      if(!notSure){
+        const items=state.specific[itemsKey]||[];
+        for(let i=0;i<items.length;i++){
+          if(!items[i].size){alert(`กรุณาเลือกขนาดของรายการที่ ${i+1}`);return;}
+          if(f.type==='per_mobile'&&(!items[i].platform||!items[i].platform.length)){alert(`กรุณาเลือก platform ของ App ${i+1}`);return;}
+        }
+      }
+      continue;
+    }
+    const v=state.specific[f.id];
+    if(!v||(Array.isArray(v)&&!v.length)){alert(`กรุณาตอบ: "${f.label}"`);return;}
+  }
+  if(svc==='mobile_app_pt'&&state.specific['mobile_002']==='ใช่ รวม backend API ด้วย'){
+    if(!state.services.includes('api_pt')){state.services.push('api_pt');alert('เพิ่ม API Penetration Test เข้า scope อัตโนมัติ');}
+  }
+  if(state._svcIdx<state.services.length-1){state._svcIdx++;renderStep();}
+  else{state.step=4;renderStep();}
+}
+
+// ── Field renderer ───────────────────────────────
+function renderField(f,store) {
+  const sk=store===state.shared?'shared':'specific', val=store[f.id];
+  if(f.type==='per_web')    return renderPerWeb();
+  if(f.type==='per_mobile') return renderPerMobile();
+  if(f.type==='per_api')    return renderPerApi();
+  if(f.type==='text') return `<div class="field"><label>${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+    <input type="text" id="fld_${f.id}" onchange="setVal('${f.id}','${sk}')" value="${val||''}"></div>`;
+  if(f.type==='textarea') return `<div class="field"><label>${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+    <textarea id="fld_${f.id}" onchange="setVal('${f.id}','${sk}')">${val||''}</textarea></div>`;
+  if(f.type==='radio') return `<div class="field"><label>${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+    <div class="chip-grid single-col">${f.opts.map(o=>{const sel=val===o;
+      return `<div class="chip chip-radio ${sel?'selected':''}" onclick="selectRadio('${f.id}','${o.replace(/'/g,"\\'")}','${sk}')">
+        <div class="chip-check">${sel?chk():''}</div><div class="chip-text">${o}</div></div>`;}).join('')}</div></div>`;
+  if(f.type==='check'){const vals=val||[];
+    return `<div class="field"><label>${f.label}${f.req?'<span class="req"> *</span>':''}</label>
+      <div class="chip-grid single-col">${f.opts.map(o=>{const sel=vals.includes(o);
+        return `<div class="chip ${sel?'selected':''}" onclick="toggleCheck('${f.id}','${o.replace(/'/g,"\\'")}','${sk}')">
+          <div class="chip-check">${sel?chk():''}</div><div class="chip-text">${o}</div></div>`;}).join('')}</div></div>`;}
+  return '';
+}
+
+// ── Per-item helpers ─────────────────────────────
+function initItems(countKey,itemsKey,defaultN,factory) {
+  const cnt=state.specific[countKey];
+  if(!cnt||cnt.includes('ยังไม่แน่ใจ')) return null;
+  const n=cnt===`${defaultN[0]}`?1:cnt.startsWith('2')?2:cnt.startsWith('4')?4:cnt==='1 app'||cnt==='1 API'?1:cnt.startsWith('2')?2:cnt.startsWith('4')?4:6;
+  if(!state.specific[itemsKey]||!state.specific[itemsKey].length)
+    state.specific[itemsKey]=Array.from({length:getDefaultN(cnt)},(_,i)=>factory(i));
+  return state.specific[itemsKey];
+}
+function getDefaultN(cnt) {
+  if(!cnt) return 2;
+  if(cnt==='1'||cnt==='1 app'||cnt==='1 API') return 1;
+  if(cnt.startsWith('2')) return 2;
+  if(cnt.startsWith('4')) return 4;
+  return 6;
+}
+
+// ── Per Web App ──────────────────────────────────
+function renderPerWeb() {
+  const cnt=state.specific['web_001'];
+  if(!cnt||cnt.includes('ยังไม่แน่ใจ')) return '';
+  if(!state.specific['web_apps']||!state.specific['web_apps'].length)
+    state.specific['web_apps']=Array.from({length:getDefaultN(cnt)},(_,i)=>({name:`App ${i+1}`,size:''}));
+  return `<div class="field"><label>ระบุขนาดของแต่ละ web application <span class="req">*</span></label>
+    <div class="item-cards" id="webAppsList">${state.specific['web_apps'].map((a,i)=>webAppCard(a,i)).join('')}</div>
+    <button type="button" class="add-item-btn" onclick="addWebApp()">+ เพิ่ม App</button></div>`;
+}
+function webAppCard(app,i) {
+  return `<div class="item-card" id="wac_${i}">
+    <div class="item-card-header">
+      <div class="item-num">${i+1}</div>
+      <input class="item-name-input" type="text" placeholder="ชื่อ app (ไม่บังคับ)" value="${app.name||''}" oninput="updateItem('web_apps',${i},'name',this.value)">
+      ${i>0?`<button class="item-remove" onclick="removeItem('web_apps',${i})">×</button>`:''}
+    </div>
+    <div class="item-sub-label">ขนาด <span style="color:var(--primary)">*</span></div>
+    <div class="mini-chips">${WEB_SIZES.map(s=>{const sel=app.size===s.val;
+      return `<div class="mini-chip ${sel?'selected':''}" onclick="selectItemSize('web_apps',${i},'${s.val}','wac_${i}')">
+        <div class="mini-dot">${sel?miniChk():''}</div>
+        <div class="mini-label"><strong>${s.val}</strong><span>${s.desc}</span></div></div>`;}).join('')}
+    </div></div>`;
+}
+function addWebApp() {
+  if(!state.specific['web_apps']) state.specific['web_apps']=[];
+  const n=state.specific['web_apps'].length;
+  state.specific['web_apps'].push({name:`App ${n+1}`,size:''});
+  const list=document.getElementById('webAppsList');
+  if(list){const d=document.createElement('div');d.innerHTML=webAppCard(state.specific['web_apps'][n],n);list.appendChild(d.firstElementChild);}
+}
+
+// ── Per Mobile App ───────────────────────────────
+function renderPerMobile() {
+  const cnt=state.specific['mobile_count'];
+  if(!cnt||cnt.includes('ยังไม่แน่ใจ')) return '';
+  if(!state.specific['mobile_apps']||!state.specific['mobile_apps'].length)
+    state.specific['mobile_apps']=Array.from({length:getDefaultN(cnt)},(_,i)=>({name:`App ${i+1}`,platform:[],size:''}));
+  return `<div class="field"><label>ระบุรายละเอียดของแต่ละ mobile app <span class="req">*</span></label>
+    <div class="item-cards" id="mobileAppsList">${state.specific['mobile_apps'].map((a,i)=>mobileAppCard(a,i)).join('')}</div>
+    <button type="button" class="add-item-btn" onclick="addMobileApp()">+ เพิ่ม App</button></div>`;
+}
+function mobileAppCard(app,i) {
+  const plats=['Android','iOS','Both'];
+  return `<div class="item-card" id="mac_${i}">
+    <div class="item-card-header">
+      <div class="item-num">${i+1}</div>
+      <input class="item-name-input" type="text" placeholder="ชื่อ app (ไม่บังคับ)" value="${app.name||''}" oninput="updateItem('mobile_apps',${i},'name',this.value)">
+      ${i>0?`<button class="item-remove" onclick="removeItem('mobile_apps',${i})">×</button>`:''}
+    </div>
+    <div class="item-sub-label">Platform <span style="color:var(--primary)">*</span></div>
+    <div class="platform-row" style="margin-bottom:12px">${plats.map(p=>{
+      const sel=(app.platform||[]).includes(p);
+      return `<div class="plat-chip ${sel?'selected':''}" onclick="togglePlatform(${i},'${p}')">
+        <div class="plat-check">${sel?miniChk():''}</div>${p}</div>`;}).join('')}
+    </div>
+    <div class="item-sub-label">ขนาด <span style="color:var(--primary)">*</span></div>
+    <div class="mini-chips">${MOBILE_SIZES.map(s=>{const sel=app.size===s.val;
+      return `<div class="mini-chip ${sel?'selected':''}" onclick="selectItemSize('mobile_apps',${i},'${s.val}','mac_${i}')">
+        <div class="mini-dot">${sel?miniChk():''}</div>
+        <div class="mini-label"><strong>${s.val}</strong><span>${s.desc}</span></div></div>`;}).join('')}
+    </div></div>`;
+}
+function togglePlatform(i,plat) {
+  const apps=state.specific['mobile_apps']; if(!apps||!apps[i]) return;
+  if(!apps[i].platform) apps[i].platform=[];
+  const idx=apps[i].platform.indexOf(plat);
+  if(idx>=0) apps[i].platform.splice(idx,1); else apps[i].platform.push(plat);
+  // Re-render just this card
+  const card=document.getElementById('mac_'+i);
+  if(card){const d=document.createElement('div');d.innerHTML=mobileAppCard(apps[i],i);card.replaceWith(d.firstElementChild);}
+}
+function addMobileApp() {
+  if(!state.specific['mobile_apps']) state.specific['mobile_apps']=[];
+  const n=state.specific['mobile_apps'].length;
+  state.specific['mobile_apps'].push({name:`App ${n+1}`,platform:[],size:''});
+  const list=document.getElementById('mobileAppsList');
+  if(list){const d=document.createElement('div');d.innerHTML=mobileAppCard(state.specific['mobile_apps'][n],n);list.appendChild(d.firstElementChild);}
+}
+
+// ── Per API ──────────────────────────────────────
+function renderPerApi() {
+  const cnt=state.specific['api_count'];
+  if(!cnt||cnt.includes('ยังไม่แน่ใจ')) return '';
+  if(!state.specific['api_items']||!state.specific['api_items'].length)
+    state.specific['api_items']=Array.from({length:getDefaultN(cnt)},(_,i)=>({name:`API ${i+1}`,desc:'',size:''}));
+  return `<div class="field"><label>ระบุรายละเอียดของแต่ละ API <span class="req">*</span></label>
+    <div class="item-cards" id="apiItemsList">${state.specific['api_items'].map((a,i)=>apiItemCard(a,i)).join('')}</div>
+    <button type="button" class="add-item-btn" onclick="addApiItem()">+ เพิ่ม API</button></div>`;
+}
+function apiItemCard(api,i) {
+  return `<div class="item-card" id="aic_${i}">
+    <div class="item-card-header">
+      <div class="item-num">${i+1}</div>
+      <input class="item-name-input" type="text" placeholder="ชื่อ API / service (ไม่บังคับ)" value="${api.name||''}" oninput="updateItem('api_items',${i},'name',this.value)">
+      ${i>0?`<button class="item-remove" onclick="removeItem('api_items',${i})">×</button>`:''}
+    </div>
+    <div class="item-sub-label">ใช้ทำอะไร? (ไม่บังคับ)</div>
+    <input type="text" class="item-name-input" style="width:100%;margin-bottom:12px" placeholder="เช่น Payment API, User Auth API" value="${api.desc||''}" oninput="updateItem('api_items',${i},'desc',this.value)">
+    <div class="item-sub-label">จำนวน endpoint โดยประมาณ <span style="color:var(--primary)">*</span></div>
+    <div class="mini-chips">${API_SIZES.map(s=>{const sel=api.size===s.val;
+      return `<div class="mini-chip ${sel?'selected':''}" onclick="selectItemSize('api_items',${i},'${s.val}','aic_${i}')">
+        <div class="mini-dot">${sel?miniChk():''}</div>
+        <div class="mini-label"><strong>${s.val}</strong><span>${s.desc}</span></div></div>`;}).join('')}
+    </div></div>`;
+}
+function addApiItem() {
+  if(!state.specific['api_items']) state.specific['api_items']=[];
+  const n=state.specific['api_items'].length;
+  state.specific['api_items'].push({name:`API ${n+1}`,desc:'',size:''});
+  const list=document.getElementById('apiItemsList');
+  if(list){const d=document.createElement('div');d.innerHTML=apiItemCard(state.specific['api_items'][n],n);list.appendChild(d.firstElementChild);}
+}
+
+// ── Shared item actions ──────────────────────────
+function updateItem(key,i,field,val) { if(state.specific[key]&&state.specific[key][i]) state.specific[key][i][field]=val; }
+function selectItemSize(key,i,size,cardId) {
+  if(!state.specific[key]) return;
+  state.specific[key][i].size=size;
+  const card=document.getElementById(cardId);
+  if(!card) return;
+  card.querySelectorAll('.mini-chip').forEach(c=>{
+    const s=c.querySelector('strong'); const sel=s&&s.textContent===size;
+    c.classList.toggle('selected',sel); c.querySelector('.mini-dot').innerHTML=sel?miniChk():'';
+  });
+}
+function removeItem(key,i) { state.specific[key].splice(i,1); renderStep(); }
+
+// ── Generic helpers ──────────────────────────────
+function setVal(id,sk) { const el=document.getElementById('fld_'+id);if(el)(sk==='shared'?state.shared:state.specific)[id]=el.value; }
+function selectRadio(id,val,sk) {
+  (sk==='shared'?state.shared:state.specific)[id]=val;
+  document.querySelectorAll(`[onclick*="selectRadio('${id}'"]`).forEach(c=>{
+    const sel=c.querySelector('.chip-text').textContent===val;
+    c.classList.toggle('selected',sel);c.querySelector('.chip-check').innerHTML=sel?chk():'';
+  });
+  if(id==='web_001'){state.specific['web_apps']=[];renderStep();}
+  if(id==='mobile_count'){state.specific['mobile_apps']=[];renderStep();}
+  if(id==='api_count'){state.specific['api_items']=[];renderStep();}
+}
+function toggleCheck(id,val,sk) {
+  const store=sk==='shared'?state.shared:state.specific;
+  if(!store[id]) store[id]=[];
+  const idx=store[id].indexOf(val);if(idx>=0)store[id].splice(idx,1);else store[id].push(val);
+  document.querySelectorAll(`[onclick*="toggleCheck('${id}'"]`).forEach(c=>{
+    const sel=store[id].includes(c.querySelector('.chip-text').textContent);
+    c.classList.toggle('selected',sel);c.querySelector('.chip-check').innerHTML=sel?chk():'';
+  });
+}
+function goBack() { if(state.step>0){state.step--;renderStep();} }
+
+// ── Summary (Step 4) ─────────────────────────────
+function renderSummary(card) {
+  const svcLabels=state.services.map(id=>{const s=SERVICES.find(x=>x.id===id);return s?`${s.icon} ${s.label}`:id;}).join(', ');
+  const sharedRows=SHARED_FIELDS.map(f=>{
+    const v=state.shared[f.id];if(!v||(Array.isArray(v)&&!v.length))return '';
+    return `<div class="summary-row"><div class="summary-q">${f.label.replace(/ \(เลือกได้หลายข้อ\)/g,'')}</div><div class="summary-a">${Array.isArray(v)?v.join(', '):v}</div></div>`;
+  }).join('');
+
+  const svcSections=state.services.map(svc=>{
+    const q=SERVICE_QUESTIONS[svc];
+    const rows=q.fields.map(f=>{
+      if(f.type==='per_web') return itemTableRow('ขนาดแต่ละ Web App','web_apps',['ชื่อ App','ขนาด'],a=>[a.name||'-',`<strong>${a.size||'ยังไม่ระบุ'}</strong>`]);
+      if(f.type==='per_mobile') return itemTableRow('รายละเอียดแต่ละ Mobile App','mobile_apps',['ชื่อ App','Platform','ขนาด'],a=>[a.name||'-',(a.platform||[]).join(', ')||'-',`<strong>${a.size||'ยังไม่ระบุ'}</strong>`]);
+      if(f.type==='per_api') return itemTableRow('รายละเอียดแต่ละ API','api_items',['ชื่อ API','ใช้ทำอะไร','Endpoints'],a=>[a.name||'-',a.desc||'-',`<strong>${a.size||'ยังไม่ระบุ'}</strong>`]);
+      const v=state.specific[f.id];if(!v||(Array.isArray(v)&&!v.length))return '';
+      return `<div class="summary-row"><div class="summary-q">${f.label.replace(/ \(เลือกได้หลายข้อ\)/g,'')}</div><div class="summary-a">${Array.isArray(v)?v.join(', '):v}</div></div>`;
+    }).join('');
+    return `<div class="summary-section"><h3>${q.icon} ${q.title}</h3>${rows}</div>`;
+  }).join('');
+
+  card.innerHTML=`
+    <div class="card-title">📝 ตรวจสอบ Scope ของคุณ</div>
+    <div class="card-sub">ตรวจสอบข้อมูลก่อนดาวน์โหลด</div>
+    <div class="summary-section"><h3>👤 ข้อมูลติดต่อ</h3>
+      <div class="summary-row"><div class="summary-q">บริษัท</div><div class="summary-a">${state.contact.company}</div></div>
+      <div class="summary-row"><div class="summary-q">ผู้ติดต่อ</div><div class="summary-a">${state.contact.name}</div></div>
+      <div class="summary-row"><div class="summary-q">Email</div><div class="summary-a">${state.contact.email}</div></div>
+      ${state.contact.phone?`<div class="summary-row"><div class="summary-q">โทร/LINE</div><div class="summary-a">${state.contact.phone}</div></div>`:''}
+      <div class="summary-row"><div class="summary-q">โปรเจกต์</div><div class="summary-a">${state.contact.project}</div></div>
+    </div>
+    <div class="summary-section"><h3>🎯 Services ที่เลือก</h3>
+      <div class="summary-row"><div class="summary-q">Service</div><div class="summary-a">${svcLabels}</div></div>
+    </div>
+    <div class="summary-section"><h3>📋 Scope & Delivery</h3>${sharedRows}</div>
+    ${svcSections}
+    <div id="pdfHint" class="pdf-hint">📌 เปิดไฟล์ HTML ที่ดาวน์โหลด → Ctrl+P → Destination: Save as PDF</div>
+    <div class="btn-row">
+      <button class="btn btn-outline" onclick="goBack()">← แก้ไข</button>
+      <button class="btn btn-pdf" onclick="downloadPDF()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        ดาวน์โหลด PDF
+      </button>
+    </div>`;
+}
+
+function itemTableRow(label,key,headers,rowFn) {
+  const items=state.specific[key];if(!items||!items.length)return '';
+  return `<div class="summary-row"><div class="summary-q">${label}</div><div class="summary-a">
+    <table class="mini-table">
+      <tr><th>#</th>${headers.map(h=>`<th>${h}</th>`).join('')}</tr>
+      ${items.map((a,i)=>`<tr><td>${i+1}</td>${rowFn(a).map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}
+    </table></div></div>`;
+}
+
+// ── PDF ──────────────────────────────────────────
+function downloadPDF() {
+  document.getElementById('pdfHint').style.display='block';
+  const ts=new Date().toLocaleDateString('th-TH',{year:'numeric',month:'long',day:'numeric'});
+  const svcBadges=state.services.map(id=>{const s=SERVICES.find(x=>x.id===id);return s?`<span class="svc-badge">${s.icon} ${s.label}</span>`:''}).join('');
+  const sharedHtml=SHARED_FIELDS.map(f=>{
+    const v=state.shared[f.id];if(!v||(Array.isArray(v)&&!v.length))return '';
+    return `<tr><td class="q">${f.label.replace(/ \(เลือกได้หลายข้อ\)/g,'')}</td><td class="a">${Array.isArray(v)?v.join(' • '):v}</td></tr>`;
+  }).join('');
+
+  function pdfItemTable(items,headers,rowFn) {
+    if(!items||!items.length) return '';
+    return `<table style="width:100%;border-collapse:collapse;margin-top:4px">
+      <tr style="background:#f0f1f5">${['#',...headers].map(h=>`<th style="font-size:10px;padding:5px 8px;text-align:left;color:#888">${h}</th>`).join('')}</tr>
+      ${items.map((a,i)=>`<tr style="background:${i%2?'#f9fafb':'#fff'}"><td style="padding:5px 8px;font-size:11px;color:#888">${i+1}</td>${rowFn(a).map(v=>`<td style="padding:5px 8px;font-size:12px">${v}</td>`).join('')}</tr>`).join('')}
+    </table>`;
+  }
+
+  const specificHtml=state.services.map(svc=>{
+    const q=SERVICE_QUESTIONS[svc];
+    const rows=q.fields.map(f=>{
+      if(f.type==='per_web'){
+        const t=pdfItemTable(state.specific['web_apps'],['ชื่อ App','ขนาด'],a=>[a.name||'-',`<strong style="color:#e8272b">${a.size||'ยังไม่ระบุ'}</strong>`]);
+        return t?`<tr><td class="q">ขนาดแต่ละ Web App</td><td class="a">${t}</td></tr>`:'';
+      }
+      if(f.type==='per_mobile'){
+        const t=pdfItemTable(state.specific['mobile_apps'],['ชื่อ App','Platform','ขนาด'],a=>[a.name||'-',(a.platform||[]).join(', ')||'-',`<strong style="color:#e8272b">${a.size||'ยังไม่ระบุ'}</strong>`]);
+        return t?`<tr><td class="q">รายละเอียด Mobile Apps</td><td class="a">${t}</td></tr>`:'';
+      }
+      if(f.type==='per_api'){
+        const t=pdfItemTable(state.specific['api_items'],['ชื่อ API','ใช้ทำอะไร','Endpoints'],a=>[a.name||'-',a.desc||'-',`<strong style="color:#e8272b">${a.size||'ยังไม่ระบุ'}</strong>`]);
+        return t?`<tr><td class="q">รายละเอียด APIs</td><td class="a">${t}</td></tr>`:'';
+      }
+      const v=state.specific[f.id];if(!v||(Array.isArray(v)&&!v.length))return '';
+      return `<tr><td class="q">${f.label.replace(/ \(เลือกได้หลายข้อ\)/g,'')}</td><td class="a">${Array.isArray(v)?v.join(' • '):v}</td></tr>`;
+    }).join('');
+    if(!rows) return '';
+    return `<div class="section"><div class="sec-title">${q.icon} ${q.title}</div><table>${rows}</table></div>`;
+  }).join('');
+
+  const html=`<!DOCTYPE html><html lang="th"><head><meta charset="UTF-8"><title>SecStrike Scope — ${state.contact.project}</title>
+<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:'Segoe UI',Arial,sans-serif;font-size:12px;color:#1a1d27;background:#fff}.page{max-width:800px;margin:0 auto;padding:32px 36px}.header{display:flex;align-items:center;justify-content:space-between;padding-bottom:18px;border-bottom:3px solid #e8272b;margin-bottom:24px}.logo{display:flex;align-items:center;gap:10px}.logo-box{width:36px;height:36px;background:#e8272b;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:900;font-size:18px}.logo-name{font-size:22px;font-weight:800}.logo-name span{color:#e8272b}.doc-title{text-align:right}.doc-title h1{font-size:15px;font-weight:700}.doc-title p{font-size:11px;color:#8b92aa;margin-top:3px}.info-bar{display:flex;margin-bottom:22px;border:1px solid #eef0f7;border-radius:10px;overflow:hidden}.info-item{flex:1;padding:12px 14px;border-right:1px solid #eef0f7}.info-item:last-child{border-right:none}.info-label{font-size:10px;color:#8b92aa;font-weight:600;text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}.info-value{font-size:13px;font-weight:600}.svc-row{display:flex;flex-wrap:wrap;gap:6px;padding:10px 10px 4px}.svc-badge{background:#fff5f5;border:1.5px solid #e8272b;color:#e8272b;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}.section{margin-bottom:20px}.sec-title{font-size:13px;font-weight:700;padding:8px 12px;background:#f7f8fc;border-left:4px solid #e8272b;border-radius:0 6px 6px 0}table{width:100%;border-collapse:collapse}tr{border-bottom:1px solid #f0f1f5}td{padding:7px 10px;vertical-align:top}td.q{width:38%;font-size:11px;color:#5a6178}td.a{font-size:12px;font-weight:500}.footer{margin-top:36px;padding-top:14px;border-top:1px solid #eef0f7;display:flex;justify-content:space-between;font-size:10px;color:#8b92aa}@media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact}.page{padding:20px 24px}}</style>
+</head><body><div class="page">
+<div class="header"><div class="logo"><div class="logo-box">S</div><div class="logo-name">Sec<span>Strike</span></div></div><div class="doc-title"><h1>Pentest Scope Request</h1><p>วันที่: ${ts}</p></div></div>
+<div class="info-bar">
+  <div class="info-item"><div class="info-label">บริษัท</div><div class="info-value">${state.contact.company}</div></div>
+  <div class="info-item"><div class="info-label">ผู้ติดต่อ</div><div class="info-value">${state.contact.name}</div></div>
+  <div class="info-item"><div class="info-label">Email</div><div class="info-value">${state.contact.email}</div></div>
+  <div class="info-item"><div class="info-label">โปรเจกต์</div><div class="info-value">${state.contact.project}</div></div>
+</div>
+<div class="section"><div class="sec-title">🎯 Services ที่ต้องการ</div><div class="svc-row">${svcBadges}</div></div>
+<div class="section"><div class="sec-title">📋 Scope & Delivery</div><table>${sharedHtml}</table></div>
+${specificHtml}
+<div class="footer"><span>SecStrike Co., Ltd. | hello@secstrike.ai | www.secstrike.ai</span><span>จัดทำโดย SecStrike Scoping Wizard</span></div>
+</div><script>window.onload=function(){window.print()}<\/script></body></html>`;
+
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download=`SecStrike_Scope_${(state.contact.project||'scope').replace(/[^\w฀-๿]/g,'_').substring(0,40)}.html`;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),3000);
+}
+
+renderStep();
+</script>
+</body>
+</html>
